@@ -1,0 +1,77 @@
+{
+  "student_name": "Jordan Ellis",
+  "grade": "11",
+  "test_administration": "SAT March 08, 2026",
+  "tested_on": "Mar 8, 2026",
+  "total_score": 1150,
+  "rw_score": 580,
+  "math_score": 570,
+  "rw_percentile": "68th*",
+  "math_percentile": "70th*",
+  "domains": [
+    {
+      "name": "Information and Ideas",
+      "section": "Reading and Writing",
+      "weight_pct": 26.0,
+      "question_count": "12-14 questions",
+      "perf_low": 480,
+      "perf_high": 540
+    },
+    {
+      "name": "Craft and Structure",
+      "section": "Reading and Writing",
+      "weight_pct": 28.0,
+      "question_count": "13-15 questions",
+      "perf_low": 550,
+      "perf_high": 600
+    },
+    {
+      "name": "Expression of Ideas",
+      "section": "Reading and Writing",
+      "weight_pct": 20.0,
+      "question_count": "8-12 questions",
+      "perf_low": 610,
+      "perf_high": 670
+    },
+    {
+      "name": "Standard English Conventions",
+      "section": "Reading and Writing",
+      "weight_pct": 26.0,
+      "question_count": "11-15 questions",
+      "perf_low": 420,
+      "perf_high": 480
+    },
+    {
+      "name": "Algebra",
+      "section": "Math",
+      "weight_pct": 35.0,
+      "question_count": "13-15 questions",
+      "perf_low": 610,
+      "perf_high": 670
+    },
+    {
+      "name": "Advanced Math",
+      "section": "Math",
+      "weight_pct": 35.0,
+      "question_count": "13-15 questions",
+      "perf_low": 470,
+      "perf_high": 540
+    },
+    {
+      "name": "Problem-Solving and Data Analysis",
+      "section": "Math",
+      "weight_pct": 15.0,
+      "question_count": "5-7 questions",
+      "perf_low": 550,
+      "perf_high": 600
+    },
+    {
+      "name": "Geometry and Trigonometry",
+      "section": "Math",
+      "weight_pct": 15.0,
+      "question_count": "5-7 questions",
+      "perf_low": 490,
+      "perf_high": 540
+    }
+  ]
+}
