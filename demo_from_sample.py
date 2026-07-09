@@ -27,24 +27,39 @@ def main():
         print(f"  {d['priority_score']:>5.1f}  {d['name']} ({d['section']}, "
               f"band {d['perf_low']}-{d['perf_high']})")
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("\nSet ANTHROPIC_API_KEY to also generate a full lesson plan "
-              "from this ranking (see generate_lesson_plan.py).")
+    if not os.environ.get("GROQ_API_KEY"):
+        print("\nSet GROQ_API_KEY (free at console.groq.com) to also generate a full "
+              "lesson plan from this ranking (see generate_lesson_plan.py).")
         return
 
     from generate_lesson_plan import build_user_prompt, SYSTEM_PROMPT, MODEL
-    import anthropic
+    from openai import OpenAI
     from types import SimpleNamespace
 
     report_ns = SimpleNamespace(**report)
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model=MODEL,
-        max_tokens=4000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": build_user_prompt(report_ns, ranked)}],
+    client = OpenAI(
+        base_url="https://api.groq.com/openai/v1",
+        api_key=os.environ.get("GROQ_API_KEY"),
     )
-    print("\n\n" + message.content[0].text)
+    response = client.chat.completions.create(
+        model=MODEL,
+        max_tokens=7000,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": build_user_prompt(report_ns, ranked)},
+        ],
+    )
+    print("\n\n" + response.choices[0].message.content)
+
+    os.makedirs("output", exist_ok=True)
+    md_path = os.path.join("output", "sample_lesson_plan.md")
+    with open(md_path, "w") as f:
+        f.write(response.choices[0].message.content)
+
+    from render_pdf import render_pdf
+    pdf_path = os.path.join("output", "sample_lesson_plan.pdf")
+    render_pdf(md_path, pdf_path)
+    print(f"\n\nSaved to {md_path} and {pdf_path}")
 
 
 if __name__ == "__main__":
