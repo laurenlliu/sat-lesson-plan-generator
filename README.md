@@ -43,8 +43,23 @@ rank_domains.py        → scores each domain by weakness + test weight
       │
       ▼
 generate_lesson_plan.py → sends ranked domains to Llama 3.3 70B via Groq,
-                          gets back a lesson plan with practice questions
+                          gets back a time-blocked session plan with
+                          practice questions
+      │
+      ▼
+render_pdf.py           → converts the plan into a clean, printable PDF
 ```
+
+## Optional: tutoring book page references
+
+`src/generate_lesson_plan.py` includes an `ACT_BOOK_PAGE_MAP` dictionary
+that maps each SAT/PSAT domain to page ranges in a specific tutoring book
+(currently set up for one edition of a Princeton Review ACT prep book,
+since ACT and SAT content maps only loosely onto each other). Page numbers
+are hardcoded, never model-generated, so they can't be hallucinated. If
+you use a different book, update this dictionary with your own page
+numbers, or remove the "Book reference" lines from the prompt entirely if
+you don't want this feature.
 
 ## Setup
 
@@ -69,7 +84,8 @@ python main.py path/to/score_report.pdf
 python main.py path/to/latest_report.pdf path/to/earlier_report.pdf
 ```
 
-This prints the lesson plan and saves it to `output/lesson_plan.md`.
+This prints the lesson plan and saves both `output/lesson_plan.md` and
+`output/lesson_plan.pdf` (clean, formatted, ready to print).
 
 No score report on hand? Try the bundled synthetic sample:
 
@@ -90,6 +106,7 @@ src/
   extract_report.py         PDF → structured score data (pdfplumber)
   rank_domains.py            Ranks domains by tutoring priority
   generate_lesson_plan.py    Builds the prompt and generates the plan via Groq
+  render_pdf.py              Converts the generated plan into a printable PDF
 samples/
   sample_extracted_report.json   Synthetic example report for demos
 ```
@@ -102,8 +119,24 @@ the bundled sample uses a fictional student. If you use this tool with
 real students, keep their reports and any extracted output out of version
 control (the `.gitignore` here already excludes `*.pdf` and `output/`).
 
+## Known limitations
+
+Llama 3.3 70B (the free model this project uses) is fast but not fully
+reliable at multi-step math. In testing, roughly half of the generated
+math practice questions had incorrect stated answers, even though the
+questions themselves looked plausible. A tutor should independently
+verify every generated math answer before handing it to a student, or
+better, pull real practice questions from College Board's own MyPractice
+tool (which are pre-verified) and use this tool just for the domain
+ranking and session structure. This is a real tradeoff of using a free,
+fast model instead of a stronger one, and a good candidate for the
+verification-pass improvement described below.
+
 ## Possible next steps
 
+- Add a verification pass: re-check each generated math question against
+  its stated answer (e.g. via a second model call, or symbolic math with
+  a library like `sympy`) before including it in the plan
 - Web UI for uploading a report and viewing the plan (currently CLI-only)
 - Persisting lesson plans per student across sessions
 - Support for the paper/school-day SAT report layout, in addition to the
