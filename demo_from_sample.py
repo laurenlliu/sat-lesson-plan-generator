@@ -32,29 +32,17 @@ def main():
               "lesson plan from this ranking (see generate_lesson_plan.py).")
         return
 
-    from generate_lesson_plan import build_user_prompt, SYSTEM_PROMPT, MODEL
-    from openai import OpenAI
+    from generate_lesson_plan import generate_plan_text
     from types import SimpleNamespace
 
     report_ns = SimpleNamespace(**report)
-    client = OpenAI(
-        base_url="https://api.groq.com/openai/v1",
-        api_key=os.environ.get("GROQ_API_KEY"),
-    )
-    response = client.chat.completions.create(
-        model=MODEL,
-        max_tokens=7000,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": build_user_prompt(report_ns, ranked)},
-        ],
-    )
-    print("\n\n" + response.choices[0].message.content)
+    plan_text = generate_plan_text(report_ns, ranked)
+    print("\n\n" + plan_text)
 
     os.makedirs("output", exist_ok=True)
     md_path = os.path.join("output", "sample_lesson_plan.md")
     with open(md_path, "w") as f:
-        f.write(response.choices[0].message.content)
+        f.write(plan_text)
 
     from render_pdf import render_pdf
     pdf_path = os.path.join("output", "sample_lesson_plan.pdf")

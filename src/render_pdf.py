@@ -55,6 +55,11 @@ def build_styles():
         fontSize=10.5, leading=15, spaceAfter=10,
         textColor="#0f5132", leftIndent=14,
     ))
+    styles.add(ParagraphStyle(
+        name="PlanWarning", parent=styles["Normal"],
+        fontSize=10.5, leading=15, spaceAfter=10,
+        textColor="#8a4b00", leftIndent=14,
+    ))
     return styles
 
 
@@ -93,6 +98,9 @@ def markdown_to_flowables(markdown_text: str, styles) -> list:
         elif line.strip().lower().startswith("answer:"):
             flush_bullets()
             flowables.append(Paragraph(_inline_markdown_to_html(line.strip()), styles["PlanAnswer"]))
+        elif line.strip().startswith("⚠️"):
+            flush_bullets()
+            flowables.append(Paragraph(_inline_markdown_to_html(line.strip()), styles["PlanWarning"]))
         else:
             flush_bullets()
             flowables.append(Paragraph(_inline_markdown_to_html(line.strip()), styles["PlanBody"]))

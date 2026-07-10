@@ -47,6 +47,11 @@ generate_lesson_plan.py → sends ranked domains to Llama 3.3 70B via Groq,
                           practice questions
       │
       ▼
+verify_questions.py    → re-checks each math question's stated answer
+                          against an independent solve, regenerating or
+                          flagging any that don't hold up
+      │
+      ▼
 render_pdf.py           → converts the plan into a clean, printable PDF
 ```
 
@@ -106,6 +111,7 @@ src/
   extract_report.py         PDF → structured score data (pdfplumber)
   rank_domains.py            Ranks domains by tutoring priority
   generate_lesson_plan.py    Builds the prompt and generates the plan via Groq
+  verify_questions.py        Re-checks math question answers, fixes or flags bad ones
   render_pdf.py              Converts the generated plan into a printable PDF
 samples/
   sample_extracted_report.json   Synthetic example report for demos
@@ -124,19 +130,27 @@ control (the `.gitignore` here already excludes `*.pdf` and `output/`).
 Llama 3.3 70B (the free model this project uses) is fast but not fully
 reliable at multi-step math. In testing, roughly half of the generated
 math practice questions had incorrect stated answers, even though the
-questions themselves looked plausible. A tutor should independently
-verify every generated math answer before handing it to a student, or
-better, pull real practice questions from College Board's own MyPractice
-tool (which are pre-verified) and use this tool just for the domain
-ranking and session structure. This is a real tradeoff of using a free,
-fast model instead of a stronger one, and a good candidate for the
-verification-pass improvement described below.
+questions themselves looked plausible.
+
+`src/verify_questions.py` mitigates this: after the plan is generated,
+every math question's stated answer is re-checked with an independent
+solve (a separate model call that doesn't see the proposed answer). If
+the independent solve disagrees, the question is regenerated once and
+re-checked; if it still can't be confirmed, the original question is
+kept but flagged in the plan with a visible "⚠️ Unverified" note so the
+tutor knows to double-check it by hand rather than trusting it silently.
+Reading/Writing questions aren't re-checked, since the documented
+failure mode is specifically multi-step math.
+
+This roughly halves the questions a tutor needs to hand-verify, but it's
+not a guarantee — the independent solve uses the same model, which can
+occasionally agree on a wrong answer. For anything graded or
+high-stakes, still pull real practice questions from College Board's
+own MyPractice tool (which are pre-verified) and use this tool just for
+domain ranking and session structure.
 
 ## Possible next steps
 
-- Add a verification pass: re-check each generated math question against
-  its stated answer (e.g. via a second model call, or symbolic math with
-  a library like `sympy`) before including it in the plan
 - Web UI for uploading a report and viewing the plan (currently CLI-only)
 - Persisting lesson plans per student across sessions
 - Support for the paper/school-day SAT report layout, in addition to the

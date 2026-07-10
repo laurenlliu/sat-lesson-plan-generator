@@ -26,6 +26,7 @@ from openai import OpenAI
 
 from extract_report import extract_report
 from rank_domains import rank_domains
+from verify_questions import verify_and_fix_plan
 
 MODEL = "llama-3.3-70b-versatile"
 
@@ -56,16 +57,29 @@ questions, only performance bands per content domain, so build the plan \
 around domain-level weaknesses, not specific missed questions.
 
 Structure the plan as a time-blocked breakdown of the full 2 hours, covering \
-the 2-3 highest priority domains (not all 8, there isn't time). For each \
-time block, include:
-- The time range (e.g. "0:00-0:40") and domain being covered
+the 2-3 highest priority domains (not all 8, there isn't time). Format each \
+time block's heading as a level-3 markdown header exactly like this, since \
+it is parsed automatically: "### <time range> — <Domain Name>" (e.g. \
+"### 0:00-0:40 — Algebra"), using the domain name exactly as given below. \
+For each time block, include:
 - A short, plain-language explanation of what the domain tests (2-3 sentences)
 - 6-8 original SAT-style practice questions (multiple choice, 4 options), \
 with an answer key and a one-sentence explanation per question. This is \
 important: a 30-40 minute block needs enough questions to fill the actual \
 tutoring time, not just 2-3. Assume roughly 3-4 minutes per question \
 including review and discussion, and size the question count to the block's \
-length accordingly.
+length accordingly. Format every practice question exactly like this, since \
+it is also parsed automatically -- numbered question in bold, four choices \
+as bullet lines, then an answer line, with a blank line between questions:
+
+  1. **<question text>**
+  - A) <choice>
+  - B) <choice>
+  - C) <choice>
+  - D) <choice>
+  Answer: <letter> — <one-sentence explanation>
+
+  Double-check your own math before stating the answer.
 - What the tutor should focus on/watch for during that block
 
 Include a short block at the end (5-10 min) for review or a quick check of \
@@ -107,15 +121,7 @@ Do not invent additional page numbers beyond what's given.
 Build a single 2-hour session plan focused on the top 2-3 priority domains."""
 
 
-def generate_lesson_plan(current_pdf: str, previous_pdf: str = None) -> str:
-    report = extract_report(current_pdf)
-    previous_report = extract_report(previous_pdf) if previous_pdf else None
-
-    ranked = rank_domains(
-        report.domains,
-        previous_report.domains if previous_report else None,
-    )
-
+def generate_plan_text(report, ranked_domains: list) -> str:
     client = OpenAI(
         base_url="https://api.groq.com/openai/v1",
         api_key=os.environ.get("GROQ_API_KEY"),
@@ -125,11 +131,31 @@ def generate_lesson_plan(current_pdf: str, previous_pdf: str = None) -> str:
         max_tokens=7000,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": build_user_prompt(report, ranked)},
+            {"role": "user", "content": build_user_prompt(report, ranked_domains)},
         ],
     )
+    plan_text = response.choices[0].message.content
 
-    return response.choices[0].message.content
+    plan_text, summary = verify_and_fix_plan(plan_text, client, MODEL)
+    if summary["checked"]:
+        print(
+            f"Verified {summary['checked']} math practice question(s): "
+            f"{summary['auto_fixed']} auto-corrected, {summary['flagged']} flagged for manual review."
+        )
+
+    return plan_text
+
+
+def generate_lesson_plan(current_pdf: str, previous_pdf: str = None) -> str:
+    report = extract_report(current_pdf)
+    previous_report = extract_report(previous_pdf) if previous_pdf else None
+
+    ranked = rank_domains(
+        report.domains,
+        previous_report.domains if previous_report else None,
+    )
+
+    return generate_plan_text(report, ranked)
 
 
 if __name__ == "__main__":
