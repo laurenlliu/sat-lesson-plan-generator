@@ -129,12 +129,20 @@ def _solve_independently(client, model: str, question: dict) -> Optional[str]:
     if final_line_match:
         result = final_line_match.group(1)
         return None if result == "NONE" else result
-    # Fallback if it didn't follow the final-line format: take the last
-    # letter/NONE mentioned, since the actual answer tends to come last.
-    matches = re.findall(r"\b([A-D]|NONE)\b", text)
-    if not matches:
+
+    # Fallback if it didn't follow the final-line format. Prefer explicit
+    # "answer is X" / "choice X" / "option X" phrasing over a bare scan --
+    # a bare last-letter scan breaks on phrasing like "the answer is B,
+    # not A", where the trailing negated letter isn't the real answer.
+    phrase_matches = re.findall(r"(?:ANSWER(?:\s+IS)?|CHOICE|OPTION)[:\s]+([A-D])\b", text)
+    if phrase_matches:
+        return phrase_matches[-1]
+
+    if "NONE" in text:
         return None
-    return None if matches[-1] == "NONE" else matches[-1]
+
+    matches = re.findall(r"\b([A-D])\b", text)
+    return matches[-1] if matches else None
 
 
 def verify_question(client, model: str, question: dict) -> bool:

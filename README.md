@@ -115,7 +115,20 @@ src/
   render_pdf.py              Converts the generated plan into a printable PDF
 samples/
   sample_extracted_report.json   Synthetic example report for demos
+tests/
+  test_verify_questions.py       Tests for the verification pass (no API key needed)
 ```
+
+## Running tests
+
+```bash
+python3 -m unittest discover tests
+```
+
+These use a fake model client (no API calls, no `GROQ_API_KEY` needed) and
+pin down the question parser's tolerance for the kind of formatting
+variation the model actually produces between runs (indentation, blank
+lines) plus the verification pass's fix/flag logic.
 
 ## A note on privacy
 
