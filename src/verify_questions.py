@@ -62,13 +62,23 @@ def parse_plan_questions(plan_text: str) -> list:
 
         question_match = QUESTION_NUM_RE.match(lines[i].strip())
         if question_match and current_domain:
+            # The model doesn't always leave/omit blank lines between the
+            # question, choices, and answer the same way every time, so
+            # tolerate blank lines anywhere between these structural parts.
             choices = {}
             j = i + 1
             while j < len(lines):
-                choice_match = CHOICE_RE.match(lines[j].strip())
-                if not choice_match:
+                stripped = lines[j].strip()
+                choice_match = CHOICE_RE.match(stripped)
+                if choice_match:
+                    choices[choice_match.group(1)] = choice_match.group(2).strip()
+                    j += 1
+                elif not stripped and len(choices) < 4:
+                    j += 1
+                else:
                     break
-                choices[choice_match.group(1)] = choice_match.group(2).strip()
+
+            while j < len(lines) and not lines[j].strip():
                 j += 1
 
             answer_match = ANSWER_RE.match(lines[j].strip()) if len(choices) == 4 and j < len(lines) else None
@@ -89,20 +99,42 @@ def parse_plan_questions(plan_text: str) -> list:
 
 
 def _solve_independently(client, model: str, question: dict) -> Optional[str]:
+    # Solving before looking at the choices, with a "NONE" escape valve, is
+    # deliberate: without it, the verifier is forced to pick from a possibly
+    # flawed set of choices and can land on the same wrong one the original
+    # generation did (both calls share the same model's blind spots).
     prompt = (
-        "Solve this SAT-style multiple-choice question independently. "
-        "Respond with only the single correct letter (A, B, C, or D) and nothing else.\n\n"
+        "Solve this SAT-style multiple-choice question completely on your own, "
+        "working out the exact correct value or result BEFORE looking at the "
+        "answer choices. Then check which single choice matches what you "
+        "computed. If none of the four choices match your computed answer, "
+        'end your response with exactly "NONE" instead of a letter. You may '
+        "show your work, but end your response with a final line reading "
+        'exactly "FINAL ANSWER: <letter or NONE>".\n\n'
         f"{question['question']}\n"
         + "\n".join(f"{letter}) {text}" for letter, text in question["choices"].items())
     )
+    # Generous max_tokens: the model tends to show its work despite being
+    # asked not to, and a tight budget was truncating it before it ever
+    # stated a final letter -- silently defaulting every question to "no
+    # match" rather than actually verifying anything.
     response = client.chat.completions.create(
         model=model,
-        max_tokens=20,
+        max_tokens=400,
         temperature=0,
         messages=[{"role": "user", "content": prompt}],
     )
-    match = re.search(r"\b([A-D])\b", response.choices[0].message.content.upper())
-    return match.group(1) if match else None
+    text = response.choices[0].message.content.upper()
+    final_line_match = re.search(r"FINAL ANSWER:\s*([A-D]\b|NONE)", text)
+    if final_line_match:
+        result = final_line_match.group(1)
+        return None if result == "NONE" else result
+    # Fallback if it didn't follow the final-line format: take the last
+    # letter/NONE mentioned, since the actual answer tends to come last.
+    matches = re.findall(r"\b([A-D]|NONE)\b", text)
+    if not matches:
+        return None
+    return None if matches[-1] == "NONE" else matches[-1]
 
 
 def verify_question(client, model: str, question: dict) -> bool:
@@ -113,8 +145,11 @@ def regenerate_question(client, model: str, domain: str) -> str:
     prompt = (
         f'Write ONE original SAT-style multiple-choice practice question (4 choices) '
         f'for the content domain "{domain}", along with the correct answer and a '
-        f"one-sentence explanation. Double-check the math carefully before answering -- "
-        f"work through it step by step first, then state the answer.\n\n"
+        f"one-sentence explanation. Work through the problem carefully in your head "
+        f"first, and double check that your stated answer exactly matches one of "
+        f"the four choices before responding. Do not show your work -- the "
+        f"explanation must be exactly one sentence, with no step-by-step "
+        f"recalculation or self-correction visible in it.\n\n"
         "Format it exactly like this, and include nothing else in your response:\n\n"
         "1. **<question text>**\n"
         "- A) <choice>\n- B) <choice>\n- C) <choice>\n- D) <choice>\n"
@@ -122,7 +157,7 @@ def regenerate_question(client, model: str, domain: str) -> str:
     )
     response = client.chat.completions.create(
         model=model,
-        max_tokens=400,
+        max_tokens=600,
         temperature=0.5,
         messages=[{"role": "user", "content": prompt}],
     )
