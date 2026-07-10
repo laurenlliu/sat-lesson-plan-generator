@@ -108,6 +108,17 @@ BLANK_LINE_BEFORE_ANSWER_PLAN = """### 0:00-0:40 — Advanced Math
   Answer: B — Uses a trig identity.
 """
 
+# Mirrors the model's real, observed output: a stray ")" after the answer
+# letter (e.g. "Answer: B) — ...").
+TRAILING_PAREN_ANSWER_PLAN = """### 0:00-0:40 — Advanced Math
+1. **What is the value of x in the equation 2x + 3 = 9?**
+  - A) 2
+  - B) 3
+  - C) 4
+  - D) 5
+  Answer: B) — Subtract 3 then divide by 2.
+"""
+
 
 class ParsePlanQuestionsTests(unittest.TestCase):
     def test_parses_every_question_with_correct_fields(self):
@@ -138,6 +149,11 @@ class ParsePlanQuestionsTests(unittest.TestCase):
 
     def test_tolerates_blank_line_before_answer(self):
         parsed = parse_plan_questions(BLANK_LINE_BEFORE_ANSWER_PLAN)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]["answer_letter"], "B")
+
+    def test_tolerates_trailing_paren_after_answer_letter(self):
+        parsed = parse_plan_questions(TRAILING_PAREN_ANSWER_PLAN)
         self.assertEqual(len(parsed), 1)
         self.assertEqual(parsed[0]["answer_letter"], "B")
 

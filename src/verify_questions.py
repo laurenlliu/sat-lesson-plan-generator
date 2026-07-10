@@ -36,7 +36,7 @@ MATH_DOMAINS = {
 DOMAIN_HEADER_RE = re.compile(r"^###.*—\s*(.+?)\s*$")
 QUESTION_NUM_RE = re.compile(r"^(\d+)\.\s+\*\*(.+?)\*\*\s*$")
 CHOICE_RE = re.compile(r"^-\s*([A-D])\)\s*(.+)$")
-ANSWER_RE = re.compile(r"^Answer:\s*([A-D])\s*—\s*(.+)$", re.IGNORECASE)
+ANSWER_RE = re.compile(r"^Answer:\s*([A-D])\)?\s*—\s*(.+)$", re.IGNORECASE)
 
 
 def parse_plan_questions(plan_text: str) -> list:
